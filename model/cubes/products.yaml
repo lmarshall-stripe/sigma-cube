@@ -1,6 +1,6 @@
 cubes:
   - name: products
-    sql: SELECT id, name, type FROM products limit 100
+    sql: SELECT id, name, type FROM products
 
     dimensions:
       - name: id

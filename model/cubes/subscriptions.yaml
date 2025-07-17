@@ -25,13 +25,12 @@ cubes:
         relationship: belongsTo
 
     measures:
-      - name: mrr_change
+      - name: mrr_change_minor_units
         sql: mrr_change
         type: number
-        format: currency
 
       - name: mrr_change_usd
-        sql: round(mrr_change / fx_rate_to_usd)
+        sql: round(mrr_change / fx_rate_to_usd) / 100
         type: sum
         format: currency
 
