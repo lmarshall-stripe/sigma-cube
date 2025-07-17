@@ -17,23 +17,8 @@ COPY package.json ./
 COPY yarn.lock ./
 
 # Install dependencies (including devDependencies since we need cubejs-server)
+# This will automatically link the local packages via file: references
 RUN yarn install --frozen-lockfile
-
-# Remove the existing packages and replace with local versions
-RUN rm -rf node_modules/@cubejs-backend/server-core node_modules/@cubejs-backend/sigma-driver
-
-# Copy the built packages from the cube directory
-RUN cp -r cube/packages/cubejs-server-core node_modules/@cubejs-backend/server-core
-RUN cp -r cube/packages/cubejs-sigma-driver node_modules/@cubejs-backend/sigma-driver
-
-# Alternative approach: Use yarn link with proper setup
-RUN cd cube/packages/cubejs-server-core && yarn link
-RUN cd cube/packages/cubejs-sigma-driver && yarn link
-RUN yarn link "@cubejs-backend/server-core" "@cubejs-backend/sigma-driver"
-
-# Verify the packages are properly linked/copied
-RUN ls -la node_modules/@cubejs-backend/ && echo "Checking if packages are properly linked..."
-RUN node -e "console.log('Server core path:', require.resolve('@cubejs-backend/server-core')); console.log('Sigma driver path:', require.resolve('@cubejs-backend/sigma-driver'));"
 
 # Copy in your Cube schema and config
 COPY model/ ./model/
