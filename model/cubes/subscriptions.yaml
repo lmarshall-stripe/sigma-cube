@@ -25,18 +25,25 @@ cubes:
         relationship: belongsTo
 
     measures:
+      - name: mrr_change
+        sql: mrr_change
+        type: number
+        format: currency
+
+      - name: mrr_change_usd
+        sql: round(mrr_change / fx_rate_to_usd)
+        type: sum
+        format: currency
+
       - name: mrr
         sql: "{mrr_change_usd}"
         type: sum
+        format: currency
         rolling_window:
           trailing: unbounded
         multi_stage: true
 
     dimensions:
-      - name: mrr_change_usd
-        sql: sum(round(mrr_change / fx_rate_to_usd))
-        type: number
-        public: false
 
       - name: date
         sql: DATE_TRUNC('day', event_timestamp)
