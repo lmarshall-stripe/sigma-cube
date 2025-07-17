@@ -1,0 +1,17 @@
+cubes:
+  - name: products
+    sql: SELECT id, name, type FROM products limit 100
+
+    dimensions:
+      - name: id
+        sql: id
+        type: string
+        primaryKey: true
+
+      - name: product_name
+        sql: name
+        type: string
+
+      - name: product_type
+        sql: type
+        type: string 

@@ -1,0 +1,97 @@
+cubes:
+  - name: subscription_item_change_events
+    sql: >
+      WITH sparse_mrr_changes AS (
+        SELECT
+          DATE_TRUNC('day', local_event_timestamp) AS date,
+          currency,
+          product_id,
+          price_id,
+          SUM(mrr_change) AS mrr_change_on_day
+        FROM subscription_item_change_events
+        GROUP BY 1, 2, 3, 4
+      ),
+      fx AS (
+        SELECT
+          date - INTERVAL '1' DAY AS date,
+          cast(JSON_PARSE(buy_currency_exchange_rates) AS MAP(VARCHAR, DOUBLE)) AS rate_per_usd
+        FROM exchange_rates_from_usd
+      ),
+      currencies AS (
+        SELECT DISTINCT(currency) FROM subscription_item_change_events
+      ),
+      date_currency AS (
+        SELECT
+          date,
+          rate_per_usd,
+          currency
+        FROM fx
+        CROSS JOIN currencies
+        ORDER BY date, currency
+      ),
+      date_currency_mrr AS (
+        SELECT
+          dpc.date,
+          dpc.currency,
+          dpc.rate_per_usd,
+          sm.product_id,
+          sm.price_id,
+          mrr_change_on_day
+        FROM date_currency dpc
+        LEFT JOIN sparse_mrr_changes sm ON dpc.date = sm.date AND dpc.currency = sm.currency
+      ),
+      daily_mrrs_pre_fx AS (
+        SELECT
+          date,
+          currency,
+          rate_per_usd,
+          product_id,
+          price_id,
+          SUM(COALESCE(mrr_change_on_day, 0)) AS mrr_change_on_day
+        FROM date_currency_mrr
+        GROUP BY 1, 2, 3, 4, 5
+        ORDER BY date DESC
+      ),
+      daily_mrrs AS (
+        SELECT
+          date,
+          product_id,
+          price_id,
+          SUM(ROUND(mrr_change_on_day / rate_per_usd [currency] * rate_per_usd ['usd'])) AS mrr_change_usd_minor_units
+        FROM daily_mrrs_pre_fx
+        GROUP BY 1, 2, 3
+      )
+      SELECT
+        date,
+        product_id,
+        price_id,
+        mrr_change_usd_minor_units
+      FROM daily_mrrs
+
+    measures:
+      - name: mrr
+        sql: mrr_change_usd_minor_units
+        type: sum
+        rollingWindow:
+          trailing: unbounded
+
+    joins:
+      - name: products
+        sql: "{CUBE}.product_id = {products}.id"
+        relationship: belongsTo
+
+    dimensions:
+      - name: date
+        sql: date
+        type: time
+        primaryKey: true
+
+      - name: product_id
+        sql: product_id
+        type: string
+        primaryKey: true
+
+      - name: price_id
+        sql: price_id
+        type: string
+        primaryKey: true
