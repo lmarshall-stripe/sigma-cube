@@ -1,0 +1,17 @@
+cubes:
+  - name: exchange_rates_from_usd
+    public: false
+    sql: >
+      SELECT
+        date,
+        buy_currency_exchange_rates
+      FROM
+        exchange_rates_from_usd
+    dimensions:
+      - name: date
+        sql: date
+        type: time
+        primaryKey: true
+      - name: buy_currency_exchange_rates
+        sql: buy_currency_exchange_rates
+        type: string 
