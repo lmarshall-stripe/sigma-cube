@@ -12,9 +12,6 @@ RUN git clone --branch sigma --single-branch --depth 1 https://github.com/lmarsh
 # Install cube dependencies and build cube packages
 RUN cd cube && ./dev-env.sh install && ./dev-env.sh build
 
-# Link the cube packages globally
-RUN cd cube && ./dev-env.sh link
-
 # Copy package files first for better layer caching
 COPY package.json ./
 COPY yarn.lock ./
@@ -22,8 +19,15 @@ COPY yarn.lock ./
 # Install dependencies (including devDependencies since we need cubejs-server)
 RUN yarn install --frozen-lockfile
 
-# Link the specific cube packages we need
-RUN yarn link "@cubejs-backend/server-core" "@cubejs-backend/sigma-driver"
+# Remove the existing packages and replace with local versions
+RUN rm -rf node_modules/@cubejs-backend/server-core node_modules/@cubejs-backend/sigma-driver
+
+# Copy the built packages from the cube directory
+RUN cp -r cube/packages/cubejs-server-core node_modules/@cubejs-backend/server-core
+RUN cp -r cube/packages/cubejs-sigma-driver node_modules/@cubejs-backend/sigma-driver
+
+# Verify the packages are properly copied
+RUN ls -la node_modules/@cubejs-backend/ && echo "Checking if packages are properly copied..."
 
 # Copy in your Cube schema and config
 COPY model/ ./model/
