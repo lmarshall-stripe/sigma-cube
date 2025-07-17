@@ -26,8 +26,14 @@ RUN rm -rf node_modules/@cubejs-backend/server-core node_modules/@cubejs-backend
 RUN cp -r cube/packages/cubejs-server-core node_modules/@cubejs-backend/server-core
 RUN cp -r cube/packages/cubejs-sigma-driver node_modules/@cubejs-backend/sigma-driver
 
-# Verify the packages are properly copied
-RUN ls -la node_modules/@cubejs-backend/ && echo "Checking if packages are properly copied..."
+# Alternative approach: Use yarn link with proper setup
+RUN cd cube/packages/cubejs-server-core && yarn link
+RUN cd cube/packages/cubejs-sigma-driver && yarn link
+RUN yarn link "@cubejs-backend/server-core" "@cubejs-backend/sigma-driver"
+
+# Verify the packages are properly linked/copied
+RUN ls -la node_modules/@cubejs-backend/ && echo "Checking if packages are properly linked..."
+RUN node -e "console.log('Server core path:', require.resolve('@cubejs-backend/server-core')); console.log('Sigma driver path:', require.resolve('@cubejs-backend/sigma-driver'));"
 
 # Copy in your Cube schema and config
 COPY model/ ./model/
