@@ -1,6 +1,6 @@
 # Sigma Cube Setup
 
-This project uses a custom fork of Cube.js with Sigma support. The setup automatically handles linking the custom packages using the `file:` approach in `package.json`.
+This project uses a custom fork of Cube.js with Sigma support. The setup uses `yarn link` to connect the custom packages.
 
 ## Local Development Setup
 
@@ -12,20 +12,35 @@ git clone https://github.com/lmarshall-stripe/sigma-cube.git
 cd sigma-cube
 ```
 
-### 2. Install Dependencies
+### 2. Clone and Build the Custom Cube.js Fork
 
-The project automatically clones and builds the custom Cube.js fork with Sigma support:
+The project requires a custom Cube.js fork with Sigma support. Clone and build it:
 
 ```sh
-yarn install
+# Clone the custom Cube.js fork
+git clone --branch sigma --single-branch --depth 1 https://github.com/lmarshall-stripe/cube.git cube
+
+# Install dependencies and build packages
+cd cube && ./dev-env.sh install && ./dev-env.sh build
+
+# Link the packages globally
+./dev-env.sh link
+
+# Return to project root
+cd ..
 ```
 
-This will:
-- Clone the custom Cube.js fork from `lmarshall-stripe/cube` (sigma branch)
-- Build the custom packages
-- Link them using the `file:` references in `package.json`
+### 3. Install Dependencies and Link Packages
 
-### 3. Configure Environment Variables
+```sh
+# Install project dependencies
+yarn install --frozen-lockfile
+
+# Link the specific cube packages we need
+yarn link "@cubejs-backend/server-core" "@cubejs-backend/sigma-driver"
+```
+
+### 4. Configure Environment Variables
 
 Create a `.env` file in this directory with the following contents (replace `CUBEJS_DB_SIGMA_API_KEY` with your actual API key and `CUBEJS_API_SECRET` with a random string):
 
@@ -41,13 +56,13 @@ CUBEJS_TESSERACT_SQL_PLANNER=true
 CUBEJS_API_SECRET=<some random string>
 ```
 
-### 4. Obtain a Sigma API Key
+### 5. Obtain a Sigma API Key
 
 - Visit the [Stripe Shop](https://go/shop) developer dashboard.
 - Create a new API key with **read/write access** to Sigma and the Files API.
 - Copy the key and add it to your `.env` file in the `CUBEJS_DB_SIGMA_API_KEY` line.
 
-### 5. Start the Development Server
+### 6. Start the Development Server
 
 Once your `.env` is configured, start the development server:
 
@@ -71,53 +86,64 @@ docker build -t sigma-cube .
 docker run -p 4000:4000 -p 3000:3000 --env-file .env sigma-cube
 ```
 
-### Heroku Deployment
+### Render Deployment
 
-The project includes a `heroku.yml` file for easy deployment to Heroku:
+To deploy to Render, follow these steps:
 
-1. **Create a Heroku app** (if you haven't already):
-   ```sh
-   heroku create your-app-name
+1. **Create a Render account** at [render.com](https://render.com)
+
+2. **Create a new Web Service**:
+   - Click "New +" and select "Web Service"
+   - Connect your GitHub repository
+   - Choose the repository containing this project
+
+3. **Configure the service**:
+   - **Name**: `sigma-cube` (or your preferred name)
+   - **Environment**: `Docker`
+   - **Region**: Choose the closest to your users
+   - **Branch**: `main` (or your default branch)
+   - **Root Directory**: Leave empty (if the Dockerfile is in the root)
+
+4. **Set environment variables** in the Render dashboard:
+   ```
+   CUBEJS_DB_SIGMA_API_KEY=your_api_key_here
+   CUBEJS_API_SECRET=your_secret_here
+   CUBEJS_DEV_MODE=true
+   CUBEJS_DB_TYPE=sigma
+   CUBEJS_EXTERNAL_DEFAULT=true
+   CUBEJS_SCHEDULED_REFRESH_DEFAULT=true
+   CUBEJS_SCHEMA_PATH=model
+   CUBEJS_WEB_SOCKETS=true
+   CUBEJS_TESSERACT_SQL_PLANNER=true
    ```
 
-2. **Set environment variables** on Heroku:
-   ```sh
-   heroku config:set CUBEJS_DB_SIGMA_API_KEY=your_api_key_here
-   heroku config:set CUBEJS_API_SECRET=your_secret_here
-   heroku config:set CUBEJS_DEV_MODE=true
-   heroku config:set CUBEJS_DB_TYPE=sigma
-   heroku config:set CUBEJS_EXTERNAL_DEFAULT=true
-   heroku config:set CUBEJS_SCHEDULED_REFRESH_DEFAULT=true
-   heroku config:set CUBEJS_SCHEMA_PATH=model
-   heroku config:set CUBEJS_WEB_SOCKETS=true
-   heroku config:set CUBEJS_TESSERACT_SQL_PLANNER=true
-   ```
+5. **Configure the service**:
+   - **Build Command**: Leave empty (Docker handles this)
+   - **Start Command**: Leave empty (Docker CMD handles this)
+   - **Port**: `4000`
 
-3. **Deploy to Heroku**:
-   ```sh
-   git push heroku main
-   ```
+6. **Deploy**:
+   - Click "Create Web Service"
+   - Render will automatically build and deploy your application
+   - The first build may take 10-15 minutes due to the Cube.js build process
+
+7. **Access your application**:
+   - Once deployed, you'll get a URL like `https://your-app-name.onrender.com`
+   - The Cube.js server will be available at this URL
 
 ## How It Works
 
 ### Package Linking
 
-The project uses the `file:` protocol in `package.json` to automatically link the custom Cube.js packages:
+The project uses `yarn link` to connect the custom Cube.js packages:
 
-```json
-{
-  "dependencies": {
-    "@cubejs-backend/server-core": "file:./cube/packages/cubejs-server-core",
-    "@cubejs-backend/sigma-driver": "file:./cube/packages/cubejs-sigma-driver"
-  }
-}
-```
+1. **Global linking**: The custom packages are linked globally using `./dev-env.sh link`
+2. **Local linking**: The project links to the global packages using `yarn link`
 
 This approach:
-- ✅ Automatically handles package linking
-- ✅ Works reliably in containers
-- ✅ No manual symlink management needed
-- ✅ Standard npm/yarn feature
+- ✅ Uses the built packages from the custom fork
+- ✅ Allows for custom modifications to Cube.js
+- ✅ Works in both local development and Docker environments
 
 ### Custom Cube.js Fork
 
@@ -126,7 +152,7 @@ The project uses a custom fork of Cube.js that includes:
 - Custom modifications for Stripe's Sigma API
 - Enhanced functionality for the specific use case
 
-The fork is automatically cloned and built during the installation process.
+The fork is cloned and built during the setup process.
 
 ## Troubleshooting
 
@@ -152,6 +178,12 @@ If you encounter issues with the custom packages not being found:
    node -e "console.log(require.resolve('@cubejs-backend/sigma-driver'));"
    ```
 
+4. **Re-link packages**:
+   ```sh
+   cd cube && ./dev-env.sh link
+   cd .. && yarn link "@cubejs-backend/server-core" "@cubejs-backend/sigma-driver"
+   ```
+
 ### Docker Issues
 
 If the Docker build fails:
@@ -159,18 +191,33 @@ If the Docker build fails:
 1. **Check the build logs** for specific error messages
 2. **Verify the cube repository** is accessible
 3. **Ensure all environment variables** are properly set
+4. **Check that the packages are properly linked** in the container
+
+### Render Issues
+
+If deployment to Render fails:
+
+1. **Check the build logs** in the Render dashboard for specific error messages
+2. **Verify all environment variables** are set correctly in Render
+3. **Ensure the Docker build** works locally first
+4. **Check that the repository** is properly connected to Render
+5. **Verify the port configuration** matches your application (should be 4000)
+
+Common Render issues:
+- **Build timeout**: The first build may take longer than the default timeout. Consider upgrading to a paid plan for longer build times.
+- **Memory issues**: The Cube.js build process is memory-intensive. Render's free tier may not be sufficient.
+- **Environment variables**: Make sure all required environment variables are set in the Render dashboard.
 
 ## Project Structure
 
 ```
 sigma-cube/
-├── cube/                    # Custom Cube.js fork (auto-cloned)
+├── cube/                    # Custom Cube.js fork (cloned during setup)
 ├── model/                   # Cube.js schema definitions
 │   ├── cubes/              # Data cube definitions
 │   └── views/              # View definitions
 ├── cube.js                 # Cube.js configuration
-├── package.json            # Dependencies with file: references
+├── package.json            # Project dependencies
 ├── Dockerfile              # Docker configuration
-├── heroku.yml              # Heroku deployment config
 └── README.md               # This file
 ```

@@ -19,7 +19,7 @@ RUN cd cube && ./dev-env.sh link
 COPY package.json ./
 COPY yarn.lock ./
 
-# Install dependencies (including devDependencies since we need cubejs-server)
+# Install dependencies
 RUN yarn install --frozen-lockfile
 
 # Link the specific cube packages we need
